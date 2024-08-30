@@ -2,9 +2,7 @@ from pathlib import Path
 from torch import nn
 import torch
 
-from create_models.architecture import Architecture
-
-from ..model_weights.common import WBTuples
+from .._types import WBTuples, Architecture
 
 
 class Linear(nn.Module):
@@ -82,9 +80,6 @@ class Conv2dLinear(nn.Module):
 MODELS = {Architecture.linear: Linear, Architecture.conv2d: Conv2d, Architecture.conv2d_linear: Conv2dLinear}
 
 
-def create(architecture: Architecture, weights: WBTuples, save_dir: Path) -> Path:
+def create(architecture: Architecture, weights: WBTuples, save_path: Path):
     model = MODELS[architecture](weights)
-    save_file = save_dir / f"torch_{architecture.name}.pt"
-    print(model(torch.zeros((1, 1, 10, 10), dtype=torch.double)))
-    torch.save(model, save_file)
-    return save_file
+    torch.save(model, save_path)

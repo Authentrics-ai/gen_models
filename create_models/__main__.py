@@ -1,18 +1,30 @@
 from pathlib import Path
 
 import click
+import numpy as np
 
-from .format import Format
-from .architecture import Architecture
+from ._types import Format, Architecture, WBTuples
+from .model_weights import linear, conv2d
 
 
 FORMATS = Format._member_names_
 MODELS = Architecture._member_names_
+EXT = {
+    Format.keras: ".keras",
+    Format.tf: "",
+    Format.torch: ".pt",
+    Format.tf_onnx: ".onnx",
+    Format.torch_onnx: ".onnx",
+}
 
 # NOTE: the keras save-file is the same regardless of backend (it actually loads
 # TF libs to save the file regardless of backend).gen
 # TODO: keras wrapping a PyTorch module (if possible? Can't find keras.layers.TorchModuleWrapper?)
 
+def copy(wb: WBTuples) -> WBTuples:
+    return [(np.copy(w), np.copy(b)) for w, b in wb]
+
+conv2d_linear_wb = copy(conv2d.WEIGHTS_BIASES) + copy(linear.WEIGHTS_BIASES)
 
 @click.command()
 @click.argument(
@@ -27,6 +39,11 @@ MODELS = Architecture._member_names_
     "generate_all",
     is_flag=True,
     help="Shortcut for '-f all -m all'",
+)
+@click.option(
+    "--overwrite/--no-overwrite",
+    help="Overwrite existing models or skip if they exist",
+    default=False,
 )
 @click.option(
     "-f",
@@ -44,7 +61,7 @@ MODELS = Architecture._member_names_
     multiple=True,
     help="Model architectures to generate in each specified format",
 )
-def cli(destination: Path, generate_all: bool, format_names: list[str], model_names: list[str]):
+def cli(destination: Path, generate_all: bool, overwrite: bool, format_names: list[str], model_names: list[str]):
     if generate_all:
         format_names = ["all"]
         model_names = ["all"]
@@ -66,14 +83,14 @@ def cli(destination: Path, generate_all: bool, format_names: list[str], model_na
         destination.mkdir()
 
     # Transform strings to enums
-    formats = [Format._member_map_[f.replace('-', '_')] for f in format_names]
-    models = [Architecture._member_map_[m.replace('-', '_')] for m in model_names]
-
-    if Format.torch in formats and Format.torch_onnx in formats:
-        formats.remove(Format.torch)
-
-    if Format.tf in formats and Format.tf_onnx in formats:
-        formats.remove(Format.tf)
+    formats: list[Format] = list()
+    for f in Format:
+        if f.name in format_names:
+            formats.append(f)
+    models: list[Architecture] = list()
+    for a in Architecture:
+        if a.name in model_names:
+            models.append(a)
 
     for format in formats:
         if format == Format.keras:
@@ -90,16 +107,12 @@ def cli(destination: Path, generate_all: bool, format_names: list[str], model_na
 
         for model in models:
             if model == Architecture.linear:
-                from .model_weights import linear
-
                 weights = linear.WEIGHTS_BIASES
             elif model == Architecture.conv2d:
-                from .model_weights import conv2d
-
                 weights = conv2d.WEIGHTS_BIASES
             elif model == Architecture.conv2d_linear:
-                from .model_weights import conv2d_linear
+                weights = conv2d_linear_wb
 
-                weights = conv2d_linear.WEIGHTS_BIASES
-
-            create_model(model, weights, destination)
+            save_file = destination / f"{format.name}_{model.name}{EXT[format]}"
+            if overwrite or not save_file.exists():
+                create_model(model, copy(weights), save_file)

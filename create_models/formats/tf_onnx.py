@@ -3,15 +3,14 @@ import subprocess as spr
 
 import click
 
-from create_models.architecture import Architecture
-
 from .tf import create as create_tf
-from ..model_weights.common import WBTuples
+from .._types import WBTuples, Architecture
 
 
-def create(architecture: Architecture, weights: WBTuples, save_dir: Path) -> Path:
-    tf_dir = create_tf(architecture, weights, save_dir)
-    converted_file = save_dir / f"onnx_tf_{architecture.name}.onnx"
+def create(architecture: Architecture, weights: WBTuples, save_path: Path):
+    tf_dir = save_path.with_name(f"tf_{architecture.name}")
+    if not tf_dir.exists():
+        create_tf(architecture, weights, save_path)
 
     assert tf_dir.is_dir()
     proc = spr.run(
@@ -22,10 +21,8 @@ def create(architecture: Architecture, weights: WBTuples, save_dir: Path) -> Pat
             "--saved-model",
             str(tf_dir),
             "--output",
-            str(converted_file),
+            str(save_path),
         ]
     )
     if proc.returncode:
         click.echo(f"Warning: tf2onnx returned with non-zero return code.")
-
-    return converted_file

@@ -2,9 +2,7 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 
-from create_models.architecture import Architecture
-
-from ..model_weights.common import WBTuples
+from .._types import WBTuples, Architecture
 
 def apply(*fns):
     def tmp(x):
@@ -168,8 +166,6 @@ class Conv2dLinear(tf.Module):
 
 MODELS = {Architecture.linear: Linear, Architecture.conv2d: Conv2d, Architecture.conv2d_linear: Conv2dLinear}
 
-def create(architecture: Architecture, weights: WBTuples, save_dir: Path) -> Path:
+def create(architecture: Architecture, weights: WBTuples, save_path: Path):
     model = MODELS[architecture](weights)
-    save_file = save_dir / f"tf_{architecture.name}"
-    tf.saved_model.save(model, str(save_file), )
-    return save_file
+    tf.saved_model.save(model, str(save_path), )

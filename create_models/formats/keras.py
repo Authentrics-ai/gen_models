@@ -2,9 +2,7 @@ from pathlib import Path
 import numpy as np
 import keras
 
-from create_models.architecture import Architecture
-
-from ..model_weights.common import WBTuples
+from .._types import WBTuples, Architecture
 
 
 def transpose_linear_weights(weights: WBTuples) -> WBTuples:
@@ -15,7 +13,7 @@ def transpose_linear_weights(weights: WBTuples) -> WBTuples:
 
 def transpose_conv_weights(weights: WBTuples) -> WBTuples:
     for i in range(len(weights)):
-        weights[i] = (np.moveaxis(weights[i][0], (0, 1, 2, 3), (3, 2, 0, 1)), weights[i][1])
+        weights[i] = (np.moveaxis(np.copy(weights[i][0]), (0, 1, 2, 3), (3, 2, 0, 1)), weights[i][1])
     return weights
 
 
@@ -75,7 +73,7 @@ def conv2d_linear(weights: WBTuples) -> keras.Model:
     ]
     model = keras.Sequential(
         [
-            keras.Input((10, 10, 1)),
+            keras.Input((None, None, 1)),
             *conv_layers,
             keras.layers.MaxPool2D(),
             *linear_layers,
@@ -95,8 +93,6 @@ def conv2d_linear(weights: WBTuples) -> keras.Model:
 MODELS = {Architecture.linear: linear, Architecture.conv2d: conv2d, Architecture.conv2d_linear: conv2d_linear}
 
 
-def create(architecture: Architecture, weights: WBTuples, save_dir: Path) -> Path:
+def create(architecture: Architecture, weights: WBTuples, save_path: Path):
     model = MODELS[architecture](weights)
-    save_file = save_dir / f"keras_{architecture.name}.keras"
-    model.save(save_file)
-    return save_file
+    model.save(save_path)
