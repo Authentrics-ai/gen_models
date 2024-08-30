@@ -1,6 +1,6 @@
 import numpy as np
 
-
+DUMMY_INPUT = np.ones((6,))
 WEIGHTS_BIASES = [
     (
         np.array([

@@ -2,6 +2,8 @@ from pathlib import Path
 import numpy as np
 import keras
 
+from create_models.architecture import Architecture
+
 from ..model_weights.common import WBTuples
 
 
@@ -13,7 +15,7 @@ def transpose_linear_weights(weights: WBTuples) -> WBTuples:
 
 def transpose_conv_weights(weights: WBTuples) -> WBTuples:
     for i in range(len(weights)):
-        weights[i] = (np.moveaxis(weights[i][0], (0, 1, 2, 3), (2, 3, 1, 0)), weights[i][1])
+        weights[i] = (np.moveaxis(weights[i][0], (0, 1, 2, 3), (3, 2, 0, 1)), weights[i][1])
     return weights
 
 
@@ -40,13 +42,13 @@ def conv2d(weights: WBTuples) -> keras.Model:
     weights = transpose_conv_weights(weights)
 
     conv_layers = [
-        keras.layers.Conv2D(8, 3, activation=keras.activations.relu),
-        keras.layers.Conv2D(16, 5),
+        keras.layers.Conv2D(2, 3, activation=keras.activations.relu),
+        keras.layers.Conv2D(6, 5),
         keras.layers.Conv2D(6, 3, activation=keras.activations.sigmoid),
     ]
 
     model = keras.Sequential(
-        [keras.Input((None, None, 3)), *conv_layers, keras.layers.MaxPool2D()]
+        [keras.Input((None, None, 1)), *conv_layers, keras.layers.MaxPool2D()]
     )
     model.build()
 
@@ -62,8 +64,8 @@ def conv2d_linear(weights: WBTuples) -> keras.Model:
     linear_weights = transpose_linear_weights(weights[3:])
 
     conv_layers: list[keras.Layer] = [
-        keras.layers.Conv2D(8, 3, activation=keras.activations.relu),
-        keras.layers.Conv2D(16, 5),
+        keras.layers.Conv2D(2, 3, activation=keras.activations.relu),
+        keras.layers.Conv2D(6, 5),
         keras.layers.Conv2D(6, 3, activation=keras.activations.sigmoid),
     ]
     linear_layers = [
@@ -73,7 +75,7 @@ def conv2d_linear(weights: WBTuples) -> keras.Model:
     ]
     model = keras.Sequential(
         [
-            keras.Input((None, None, 3)),
+            keras.Input((10, 10, 1)),
             *conv_layers,
             keras.layers.MaxPool2D(),
             *linear_layers,
@@ -90,9 +92,11 @@ def conv2d_linear(weights: WBTuples) -> keras.Model:
     return model
 
 
-MODELS = {"linear": linear, "conv2d": conv2d, "conv2d_linear": conv2d_linear}
+MODELS = {Architecture.linear: linear, Architecture.conv2d: conv2d, Architecture.conv2d_linear: conv2d_linear}
 
 
-def create(model_name: str, weights: WBTuples, save_dir: Path):
-    model = MODELS[model_name](weights)
-    model.save(save_dir / f"keras_{model_name}.keras")
+def create(architecture: Architecture, weights: WBTuples, save_dir: Path) -> Path:
+    model = MODELS[architecture](weights)
+    save_file = save_dir / f"keras_{architecture.name}.keras"
+    model.save(save_file)
+    return save_file

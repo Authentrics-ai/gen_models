@@ -2,6 +2,8 @@ from pathlib import Path
 from torch import nn
 import torch
 
+from create_models.architecture import Architecture
+
 from ..model_weights.common import WBTuples
 
 
@@ -33,10 +35,10 @@ class Conv2d(nn.Module):
         super().__init__()
         assert len(weights) == 3
         self.seq = nn.Sequential(
-            nn.Conv2d(3, 8, 3),
+            nn.Conv2d(1, 2, 3),
             nn.ReLU(),
-            nn.Conv2d(8, 16, 5),
-            nn.Conv2d(16, 6, 3),
+            nn.Conv2d(2, 6, 5),
+            nn.Conv2d(6, 6, 3),
             nn.Sigmoid(),
             nn.MaxPool2d(2),
         )
@@ -54,13 +56,13 @@ class Conv2dLinear(nn.Module):
         super().__init__()
         assert len(weights) == 6
         self.seq = nn.Sequential(
-            nn.Conv2d(3, 8, 3),
+            nn.Conv2d(1, 2, 3),
             nn.ReLU(),
-            nn.Conv2d(8, 16, 5),
-            nn.Conv2d(16, 6, 3),
+            nn.Conv2d(2, 6, 5),
+            nn.Conv2d(6, 6, 3),
             nn.Sigmoid(),
             nn.MaxPool2d(2),
-            nn.Flatten(),
+            nn.Flatten(start_dim=0),
             nn.Linear(6, 12),
             nn.ReLU(),
             nn.Linear(12, 8),
@@ -68,7 +70,7 @@ class Conv2dLinear(nn.Module):
             nn.Linear(8, 4),
             nn.Tanh(),
         )
-        seq_inds = [0, 2, 3, 6, 8, 10]
+        seq_inds = [0, 2, 3, 7, 9, 11]
         for i, (weight, bias) in zip(seq_inds, weights):
             self.seq[i].weight.data = torch.as_tensor(weight)
             self.seq[i].bias.data = torch.as_tensor(bias)
@@ -77,9 +79,12 @@ class Conv2dLinear(nn.Module):
         return self.seq(x)
 
 
-MODELS = {"linear": Linear, "conv2d": Conv2d, "conv2d_linear": Conv2dLinear}
+MODELS = {Architecture.linear: Linear, Architecture.conv2d: Conv2d, Architecture.conv2d_linear: Conv2dLinear}
 
 
-def create(model_name: str, weights: WBTuples, save_dir: Path):
-    model = MODELS[model_name](weights)
-    torch.save(model, save_dir / f"torch_{model_name}.pt")
+def create(architecture: Architecture, weights: WBTuples, save_dir: Path) -> Path:
+    model = MODELS[architecture](weights)
+    save_file = save_dir / f"torch_{architecture.name}.pt"
+    print(model(torch.zeros((1, 1, 10, 10), dtype=torch.double)))
+    torch.save(model, save_file)
+    return save_file

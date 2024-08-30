@@ -1,8 +1,13 @@
 from pathlib import Path
+
 import click
 
-FORMATS = ["torch", "tf", "onnx", "keras"]
-MODELS = ["linear", "conv2d", "conv2d_linear"]
+from .format import Format
+from .architecture import Architecture
+
+
+FORMATS = Format._member_names_
+MODELS = Architecture._member_names_
 
 # NOTE: the keras save-file is the same regardless of backend (it actually loads
 # TF libs to save the file regardless of backend).gen
@@ -10,69 +15,91 @@ MODELS = ["linear", "conv2d", "conv2d_linear"]
 
 
 @click.command()
+@click.argument(
+    "destination",
+    nargs=1,
+    type=click.Path(file_okay=False, writable=True, path_type=Path),
+    default=Path("."),
+)
 @click.help_option("-h", "--help")
+@click.option(
+    "--all",
+    "generate_all",
+    is_flag=True,
+    help="Shortcut for '-f all -m all'",
+)
 @click.option(
     "-f",
     "--formats",
+    "format_names",
     type=click.Choice(FORMATS + ["all"], case_sensitive=False),
     multiple=True,
-    required=True,
+    help="File formats to generate with each specified model",
 )
 @click.option(
     "-m",
     "--models",
+    "model_names",
     type=click.Choice(MODELS + ["all"], case_sensitive=False),
     multiple=True,
-    required=True,
+    help="Model architectures to generate in each specified format",
 )
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(file_okay=False, writable=True, path_type=Path),
-    default=Path(".")
-)
-def cli(formats: list[str], models: list[str], output_dir: Path):
-    if "all" in formats:
-        formats = FORMATS
-    if "all" in models:
-        models = MODELS
-    click.echo(f"Formats: {', '.join(formats)}")
-    click.echo(f"Models: {', '.join(models)}")
+def cli(destination: Path, generate_all: bool, format_names: list[str], model_names: list[str]):
+    if generate_all:
+        format_names = ["all"]
+        model_names = ["all"]
 
-    if not output_dir.exists():
-        click.echo(f"Creating output directory: {output_dir.absolute}")
-        output_dir.mkdir()
+    if len(format_names) == 0:
+        raise click.BadOptionUsage("formats", "Option '--formats' should always be set")
+    if len(model_names) == 0:
+        raise click.BadOptionUsage("models", "Option '--models' should always be set")
+
+    if "all" in format_names:
+        format_names = FORMATS
+    if "all" in model_names:
+        model_names = MODELS
+    click.echo(f"Formats: {', '.join(format_names)}")
+    click.echo(f"Models: {', '.join(model_names)}")
+
+    if not destination.exists():
+        click.echo(f"Creating output directory: {destination.absolute}")
+        destination.mkdir()
+
+    # Transform strings to enums
+    formats = [Format._member_map_[f.replace('-', '_')] for f in format_names]
+    models = [Architecture._member_map_[m.replace('-', '_')] for m in model_names]
+
+    if Format.torch in formats and Format.torch_onnx in formats:
+        formats.remove(Format.torch)
+
+    if Format.tf in formats and Format.tf_onnx in formats:
+        formats.remove(Format.tf)
 
     for format in formats:
-        if format == "keras":
-            from .formats import keras
+        if format == Format.keras:
+            from .formats.keras import create as create_model
+        elif format == Format.torch:
+            from .formats.torch import create as create_model
+        elif format == Format.tf:
+            from .formats.tf import create as create_model
+        elif format == Format.torch_onnx:
+            from .formats.torch_onnx import create as create_model
+        elif format == Format.tf_onnx:
+            from .formats.tf_onnx import create as create_model
 
-            create_fn = keras.create
-        elif format == "torch":
-            from .formats import torch
-
-            create_fn = torch.create
-        elif format == "tf":
-            from .formats import tf
-
-            create_fn = tf.create
-        elif format == "onnx":
-            from .formats import onnx
-
-            create_fn = onnx.create
 
         for model in models:
-            if model == "linear":
+            if model == Architecture.linear:
                 from .model_weights import linear
 
                 weights = linear.WEIGHTS_BIASES
-            elif model == "conv2d":
+            elif model == Architecture.conv2d:
                 from .model_weights import conv2d
 
                 weights = conv2d.WEIGHTS_BIASES
-            elif model == "conv2d_linear":
+            elif model == Architecture.conv2d_linear:
                 from .model_weights import conv2d_linear
 
                 weights = conv2d_linear.WEIGHTS_BIASES
 
-            create_fn(model, weights, output_dir)
+            create_model(model, weights, destination)

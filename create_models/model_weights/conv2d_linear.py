@@ -9,6 +9,7 @@ and linear layers.
 from . import conv2d
 from . import linear
 
+DUMMY_INPUT = conv2d.DUMMY_INPUT
 WEIGHTS_BIASES = list()
 WEIGHTS_BIASES.extend(conv2d.WEIGHTS_BIASES)
 WEIGHTS_BIASES.extend(linear.WEIGHTS_BIASES)
