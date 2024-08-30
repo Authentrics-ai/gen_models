@@ -2,28 +2,23 @@
 
 A central repo to construct various toy models and slightly larger models in various formats.
 
-## Models
+Currently supported formats:
 
-### Linear/Dense
+- Keras (`.keras`)
+- PyTorch (`.pt`)
+- Tensorflow (`saved_model` format)
+- ONNX (`.onnx`) created from the PyTorch and Tensorflow files.
 
-### Conv2D
+Currently implemented model architectures:
 
-### Conv2D w/ Linear classifier
+- Linear (3 layers, 4-12 nodes per layer, various activation functions)
+- Conv2D (3 layers)
+- Conv2D_linear (combination of Conv2D feeding into Linear, like an image classifier)
 
-### RNN
+## Installation
 
-## Formats
+I've kept the required versions that we have in the Dynamic and Static repos for compatibility, so installation should be quick if you already have Keras, TF, Torch, Onnx installed:
 
-### Torch native
-
-### Tensorflow native
-
-### Onnx
-
-### Keras from Torch
-
-### Keras from TF
-
-
-
-
+```bash
+pip install .
+```
