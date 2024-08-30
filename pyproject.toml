@@ -1,0 +1,22 @@
+[project]
+name = "create-models"
+version = "0.1.0"
+description = "Create test models in a variety of formats and architectures"
+authors = [{name = "Michael Jacobs", email = "michael.jacobs@authentrics.ai"}]
+license = {file = "LICENSE"}
+readme = "README.md"
+dependencies = [
+    "click>=8.1.7",
+    "keras>=3.5.0",
+    "torch>=2.2.2",
+    "tensorflow>=2.17.0",
+    "onnx>=1.16.0",
+    "numpy>=1.26.4",
+]
+
+[build-system]
+requires = ["setuptools>=65.5.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+gen_models = "create_models.__main__:cli"
